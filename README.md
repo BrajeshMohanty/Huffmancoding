@@ -1,35 +1,152 @@
 //# Huffmancoding
 //this a project based On Huffman coding algorithm for data compression and decompression
 
-Huffman Coding is a widely used data compression technique that offers
-an optimal variable-length encoding by assigning shorter codes to more
-frequently occurring characters in a given dataset. This project aims to
-explain the design and implementation of Huffman Coding, showcasing
-its effectiveness in reducing the size of data while preserving its
-information content. By presenting the results of our implementation and
-discussing its limitations, we explore the potential of Huffman Coding in
-various scenarios. Furthermore, we discuss future enhancements and
-alternative compression algorithms that could further improve data
-compression techniques.
+import java.util.HashMap;
+import java.util.Map;
+import java.util.PriorityQueue;
 
-* Designing of Algorithm
-❖ The goal of data compression is to reduce the size of data files while
-preserving their essential information. Efficient compression techniques are of
-paramount importance due to several reasons.
-❖ Firstly, they optimize storage space, allowing for more data to be stored in
-limited memory or disk capacity.
-❖ Secondly, efficient compression enables faster data transmission over
-networks, reducing bandwidth requirements and enhancing data transfer rates.
-Additionally, compressed files require less time and resources for backup and
-retrieval operations.
-The Fundamental principle underlying Huffman Coding:
-❖ The fundamental principle underlying Huffman Coding is the efficient
-representation of data by assigning shorter codes to more frequently occurring
-symbols.
-❖ By analyzing the frequency distribution of symbols in a dataset, Huffman
-Coding constructs a binary tree where each leaf node represents a symbol.
-❖ The tree is built in a way that symbols with higher frequencies have shorter
-code paths, while symbols with lower frequencies have longer code paths.
-This variable-length encoding ensures that commonly occurring symbols are
-represented by fewer bits, resulting in optimal compression.
+public class HuffmanEncoder {
+
+    private static final int ALPHABET_SIZE = 256;
+public HuffmanEncodedResult compress(final String data){
+    final int[]freq = buildfrequencyTable(data);
+    final Node root=buildHuffmanTree(freq);
+    final Map<Character,String> lookupTable=buildLookupTable(root);
+
+    return new HuffmanEncodedResult(generateEncodedData(data,lookupTable),root);
+}
+
+    private static String generateEncodedData(String data, Map<Character, String> lookupTable) {
+
+    final  StringBuilder builder=new StringBuilder();
+    for(final char character :data.toCharArray()){
+        builder.append(lookupTable.get(character));
+    }
+    return builder.toString();
+}
+
+    private  static Map<Character,String> buildLookupTable(final Node root){
+    final Map<Character,String> lookupTable=new HashMap<>();
+
+    buildLookupTableImpl(root,"",lookupTable);//HELPER METHOD
+    return lookupTable;
+}
+
+    private static void buildLookupTableImpl(final Node node,final String s,final Map<Character, String> lookupTable) {
+    if(!node.isLeaf()){
+      buildLookupTableImpl(node.leftChild,s+'0',lookupTable);
+      buildLookupTableImpl(node.rightChild,s+"1",lookupTable);
+    }
+    else{
+        lookupTable.put(node.character,s);
+    }
+    }
+
+    private static Node buildHuffmanTree(int[] freq){
+    final PriorityQueue<Node> priorityQueue= new PriorityQueue<>();
+//    final Node root= buildHuffmanTree(freq);
+    for(char i=0;i<ALPHABET_SIZE;i++){
+        if(freq[i]>0){
+         priorityQueue.add(new Node(i,freq[i],null ,null));
+        }
+    }
+if(priorityQueue.size()==1){
+    priorityQueue.add(new Node('\0',1,null,null));
+}
+    while (priorityQueue.size()>1){
+        final Node left=priorityQueue.poll();
+        final Node right = priorityQueue.poll();
+        final Node parent=new Node('\0', left.frequency+ right.frequency,left,right );
+        priorityQueue.add(parent);
+    }
+    return priorityQueue.poll();
+}
+private static int[] buildfrequencyTable(final String data){
+    final int[] freq = new int[ALPHABET_SIZE];
+    for (final  char character:data.toCharArray()) {
+        freq[character]++;
+    }
+    return freq;
+}
+public String decompress(final HuffmanEncodedResult result){
+    final StringBuilder resultBuilder = new StringBuilder();
+    Node current =result.getRoot();
+    int i=0;
+
+    while (i<result.getEncodedData().length()){
+        while (!current.isLeaf()){
+            char bit= result.getEncodedData().charAt(i);
+            if(bit=='1'){
+            current=current.rightChild;
+            } else if (bit=='0') {
+        current=current.leftChild;
+            }
+            else{
+                throw new IllegalArgumentException("Invalid bit in message!" +bit);
+            }
+            i++;
+        }
+        resultBuilder.append(current.character);
+        current=result.getRoot();
+    }
+     return resultBuilder.toString();
+}
+
+static class Node implements  Comparable<Node>{
+     private  final char character;
+     private  final int frequency;
+     private final Node leftChild;
+     private final Node rightChild;
+
+     private Node(final char character,final int frequency,final Node leftChild, final Node rightChild){
+        this.character=character;
+        this.frequency=frequency;
+        this.leftChild=leftChild;
+        this.rightChild=rightChild;
+     }
+     boolean isLeaf(){
+         return this.leftChild==null&& this.rightChild==null;
+     }
+
+    @Override
+    public int compareTo(final Node that) { 
+         final int frequencyComparison= Integer.compare(this.frequency,that.frequency);
+          if(frequencyComparison!=0){
+              return frequencyComparison;
+          }
+        return Integer.compare(this.character,that.character);
+    }
+}
+static  class HuffmanEncodedResult{
+    final Node root;
+    final String encodedData;
+    HuffmanEncodedResult(final String encodedData,final Node root){
+        this.root=root;
+        this.encodedData=encodedData;
+    }
+
+    public Node getRoot() {
+        return this.root;
+    }
+
+    public String getEncodedData() {
+        return  this.encodedData;
+    }
+}
+
+    public static void main(String[] args) {
+        final String test="aabbccc";
+        System.out.println("THE TEST STRING= "+test);
+        final int[]ft=buildfrequencyTable(test);
+        final Node n=buildHuffmanTree(ft);
+        final  Map<Character,String>lookup=buildLookupTable(n);
+        System.out.println(lookup);
+        final HuffmanEncoder encoder=new HuffmanEncoder();
+        final HuffmanEncodedResult result= encoder.compress(test);
+        System.out.println("ENCODED MESSAGE="+result.encodedData);
+        System.out.println("UNENCODED MESSAGE="+encoder.decompress(result));
+    }
+
+}
+
 
